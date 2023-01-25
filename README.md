@@ -4,87 +4,19 @@
 
 > Cloned from https://github.com/taesungp/contrastive-unpaired-translation
 
-[Contrastive Learning for Unpaired Image-to-Image Translation](http://taesung.me/ContrastiveUnpairedTranslation/)  
- [Taesung Park](https://taesung.me/), [Alexei A. Efros](https://people.eecs.berkeley.edu/~efros/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
-UC Berkeley and Adobe Research<br>
- In ECCV 2020
-
-<img src='imgs/patchnce.gif' align="right" width=960>
-
-<br><br><br>
-
-### Pseudo code
-```python
-import torch
-cross_entropy_loss = torch.nn.CrossEntropyLoss()
-
-# Input: f_q (BxCxS) and sampled features from H(G_enc(x))
-# Input: f_k (BxCxS) are sampled features from H(G_enc(G(x))
-# Input: tau is the temperature used in PatchNCE loss.
-# Output: PatchNCE loss
-def PatchNCELoss(f_q, f_k, tau=0.07):
-    # batch size, channel size, and number of sample locations
-    B, C, S = f_q.shape
-
-    # calculate v * v+: BxSx1
-    l_pos = (f_k * f_q).sum(dim=1)[:, :, None]
-
-    # calculate v * v-: BxSxS
-    l_neg = torch.bmm(f_q.transpose(1, 2), f_k)
-
-    # The diagonal entries are not negatives. Remove them.
-    identity_matrix = torch.eye(S)[None, :, :]
-    l_neg.masked_fill_(identity_matrix, -float('inf'))
-
-    # calculate logits: (B)x(S)x(S+1)
-    logits = torch.cat((l_pos, l_neg), dim=2) / tau
-
-    # return PatchNCE loss
-    predictions = logits.flatten(0, 1)
-    targets = torch.zeros(B * S, dtype=torch.long)
-    return cross_entropy_loss(predictions, targets)
-```
-## Example Results
-
-### Unpaired Image-to-Image Translation
-<img src="imgs/results.gif" width="800px"/>
-
-### Single Image Unpaired Translation
-<img src="imgs/singleimage.gif" width="800px"/>
-
-
-### Russian Blue Cat to Grumpy Cat
-<img src="imgs/grumpycat.jpg" width="800px"/>
-
-### Parisian Street to Burano's painted houses
-<img src="imgs/paris.jpg" width="800px"/>
-
-
+Website: [Contrastive Learning for Unpaired Image-to-Image Translation](http://taesung.me/ContrastiveUnpairedTranslation/)  
+Authors: [Taesung Park](https://taesung.me/), [Alexei A. Efros](https://people.eecs.berkeley.edu/~efros/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
+Institute: UC Berkeley and Adobe Research<br> In ECCV 2020
 
 ## Prerequisites
 - Linux or macOS
 - Python 3
 - CPU or NVIDIA GPU + CUDA CuDNN
 
-### Update log
-
-9/12/2020: Added single-image translation.
-
-### Getting started
-
-- Clone this repo:
+Install PyTorch 1.1 and other dependencies (e.g., torchvision, visdom, dominate, gputil).
 ```bash
-git clone https://github.com/taesungp/contrastive-unpaired-translation CUT
-cd CUT
+pip install -r requirements.txt
 ```
-
-- Install PyTorch 1.1 and other dependencies (e.g., torchvision, visdom, dominate, gputil).
-
-  For pip users, please type the command `pip install -r requirements.txt`.
-
-  For Conda users,  you can create a new Conda environment using `conda env create -f environment.yml`.
-
-
 ### CUT and FastCUT Training and Test
 
 - Download the `grumpifycat` dataset (Fig 8 of the paper. Russian Blue -> Grumpy Cats)
@@ -99,7 +31,7 @@ The dataset is downloaded and unzipped at `./datasets/grumpifycat/`.
 ```bash
 python train.py --dataroot ./datasets/grumpifycat --name grumpycat_CUT --CUT_mode CUT
 ```
- Or train the FastCUT model
+ or train the FastCUT model
  ```bash
 python train.py --dataroot ./datasets/grumpifycat --name grumpycat_FastCUT --CUT_mode FastCUT
 ```
@@ -113,63 +45,12 @@ python test.py --dataroot ./datasets/grumpifycat --name grumpycat_CUT --CUT_mode
 The test results will be saved to a html file here: `./results/grumpifycat/latest_train/index.html`.
 
 ### CUT, FastCUT, and CycleGAN
-<img src="imgs/horse2zebra_comparison.jpg" width="800px"/><br>
 
 CUT is trained with the identity preservation loss and with `lambda_NCE=1`, while FastCUT is trained without the identity loss but with higher `lambda_NCE=10.0`. Compared to CycleGAN, CUT learns to perform more powerful distribution matching, while FastCUT is designed as a lighter (half the GPU memory, can fit a larger image), and faster (twice faster to train) alternative to CycleGAN. Please refer to the [paper](https://arxiv.org/abs/2007.15651) for more details.
 
 In the above figure, we measure the percentage of pixels belonging to the horse/zebra bodies, using a pre-trained semantic segmentation model. We find a distribution mismatch between sizes of horses and zebras images -- zebras usually appear larger (36.8\% vs. 17.9\%). Our full method CUT has the flexibility to enlarge the horses, as a means of better matching of the training statistics than CycleGAN. FastCUT behaves more conservatively like CycleGAN.
 
-### Training using our launcher scripts
-
-Please see `experiments/grumpifycat_launcher.py` that generates the above command line arguments. The launcher scripts are useful for configuring rather complicated command-line arguments of training and testing.
-
-Using the launcher, the command below generates the training command of CUT and FastCUT.
-```bash
-python -m experiments grumpifycat train 0   # CUT
-python -m experiments grumpifycat train 1   # FastCUT
-```
-
-To test using the launcher,
-```bash
-python -m experiments grumpifycat test 0   # CUT
-python -m experiments grumpifycat test 1   # FastCUT
-```
-
-Possible commands are run, run_test, launch, close, and so on. Please see `experiments/__main__.py` for all commands. Launcher is easy and quick to define and use. For example, the grumpifycat launcher is defined in a few lines:
-```python
-from .tmux_launcher import Options, TmuxLauncher
-
-
-class Launcher(TmuxLauncher):
-    def common_options(self):
-        return [
-            Options(    # Command 0
-                dataroot="./datasets/grumpifycat",
-                name="grumpifycat_CUT",
-                CUT_mode="CUT"
-            ),
-
-            Options(    # Command 1
-                dataroot="./datasets/grumpifycat",
-                name="grumpifycat_FastCUT",
-                CUT_mode="FastCUT",
-            )
-        ]
-
-    def commands(self):
-        return ["python train.py " + str(opt) for opt in self.common_options()]
-
-    def test_commands(self):
-        # Russian Blue -> Grumpy Cats dataset does not have test split.
-        # Therefore, let's set the test split to be the "train" set.
-        return ["python test.py " + str(opt.set(phase='train')) for opt in self.common_options()]
-
-```
-
-
-
 ### Apply a pre-trained CUT model and evaluate FID
-
 To run the pretrained models, run the following.
 
 ```bash
@@ -297,7 +178,3 @@ If you use the original [pix2pix](https://phillipi.github.io/pix2pix/) and [Cycl
   year={2017}
 }
 ```
-
-
-### Acknowledgments
-We thank Allan Jabri and Phillip Isola for helpful discussion and feedback. Our code is developed based on [pytorch-CycleGAN-and-pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). We also thank [pytorch-fid](https://github.com/mseitzer/pytorch-fid) for FID computation,  [drn](https://github.com/fyu/drn) for mIoU computation, and [stylegan2-pytorch](https://github.com/rosinality/stylegan2-pytorch/) for the PyTorch implementation of StyleGAN2 used in our single-image translation setting.
