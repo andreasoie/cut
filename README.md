@@ -2,25 +2,12 @@
 
 # Contrastive Unpaired Translation (CUT)
 
-### [video (1m)](https://youtu.be/Llg0vE_MVgk) |  [video (10m)](https://youtu.be/jSGOzjmN8q0) | [website](http://taesung.me/ContrastiveUnpairedTranslation/) |   [paper](https://arxiv.org/pdf/2007.15651)
-<br>
-
-<img src='imgs/gif_cut.gif' align="right" width=960>
-
-<br><br><br>
-
-
-
-We provide our PyTorch implementation of unpaired image-to-image translation based on patchwise contrastive learning and adversarial learning.  No hand-crafted loss and inverse network is used. Compared to [CycleGAN](https://github.com/junyanz/CycleGAN), our model training is faster and less memory-intensive. In addition, our method can be extended to single image training, where each “domain” is only a *single* image.
-
-
-
+> Cloned from https://github.com/taesungp/contrastive-unpaired-translation
 
 [Contrastive Learning for Unpaired Image-to-Image Translation](http://taesung.me/ContrastiveUnpairedTranslation/)  
  [Taesung Park](https://taesung.me/), [Alexei A. Efros](https://people.eecs.berkeley.edu/~efros/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
 UC Berkeley and Adobe Research<br>
  In ECCV 2020
-
 
 <img src='imgs/patchnce.gif' align="right" width=960>
 
