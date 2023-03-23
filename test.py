@@ -43,14 +43,8 @@ if __name__ == '__main__':
     opt.batch_size = 1    # test code only supports batch_size = 1
     opt.serial_batches = True  # disable data shuffling; comment this line if results on randomly chosen images are needed.
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
-    opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    train_dataset = create_dataset(util.copyconf(opt, phase="train"))
     model = create_model(opt)      # create a model given opt.model and other options
-    # create a webpage for viewing the results
-    web_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
-    print('creating web directory', web_dir)
-    webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
 
     for i, data in enumerate(dataset):
         if i == 0:
@@ -64,9 +58,10 @@ if __name__ == '__main__':
             break
         model.set_input(data)  # unpack data from data loader
         model.test()           # run inference
+        
         visuals = model.get_current_visuals()  # get image results
-        img_path = model.get_image_paths()     # get image paths
+        image_path = model.get_image_paths()     # get image paths
+        
         if i % 5 == 0:  # save images to an HTML file
-            print('processing (%04d)-th image... %s' % (i, img_path))
-        save_images(webpage, visuals, img_path, width=opt.display_winsize)
-    webpage.save()  # save the HTML
+            print('processing (%04d)-th image... %s' % (i, image_path))
+        save_images(image_dir=opt.results_dir, label="fake_B", visuals=visuals, image_path=image_path)

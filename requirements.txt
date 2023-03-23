@@ -6,3 +6,5 @@ packaging
 GPUtil>=1.4.0
 wandb
 matplotlib
+opencv-python
+tqdm
