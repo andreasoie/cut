@@ -134,3 +134,4 @@ tmp/*
 checkpoints/*
 wandb/*
 snapshots
+outputs
