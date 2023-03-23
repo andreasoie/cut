@@ -133,3 +133,4 @@ dmypy.json
 tmp/*
 checkpoints/*
 wandb/*
+snapshots

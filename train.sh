@@ -1,0 +1,11 @@
+python train.py \
+--dataroot /home/andreoi/data/autoferry \
+--name autoferry \
+--model cut \
+--input_nc 3 \
+--output_nc 3 \
+--batch_size 8 \
+--phase train \
+--save_by_iter \
+--preprocess resize \
+--load_size 256
