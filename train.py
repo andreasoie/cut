@@ -14,22 +14,18 @@ from util.util import tensor2im
 
 warnings.filterwarnings("ignore")
 
-os.makedirs("tmp", exist_ok=True)
-os.makedirs("checkpoints", exist_ok=True)
-
-def save_snapshot_image(visuals: OrderedDict) -> None:
+def save_snapshot_image(visuals: OrderedDict, filename: str) -> None:
     fig, axs = plt.subplots(nrows=1, ncols=len(visuals), squeeze=False, figsize=(40, 10))
     for i, (label, image) in enumerate(visuals.items()):
         image = tensor2im(image)
         axs[0, i].imshow(image)
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
         axs[0, i].set_title(label, fontsize=25)
-    plt.savefig(f"tmp/current.png")
+    plt.savefig(filename)
     plt.tight_layout()
     plt.close()
 
 if __name__ == '__main__':
-
 
     opt = TrainOptions().parse()   # get training options
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
@@ -43,6 +39,9 @@ if __name__ == '__main__':
 
     wandb.init(project="cut", entity="andreasoie")
     wandb.config.update(opt)
+
+    os.makedirs(f"snapshots/{opt.name}", exist_ok=True)
+    os.makedirs("checkpoints", exist_ok=True)
     
     times = []
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
@@ -81,17 +80,16 @@ if __name__ == '__main__':
             if total_iters % opt.display_freq == 0:   # display images on visdom and save images to a HTML file
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
-                save_snapshot_image(model.get_current_visuals())
-                wandb.log({"example": wandb.Image("tmp/current.png")})                
+                filename = os.path.join("snapshots", opt.name, f"{total_iters}.png")
+                save_snapshot_image(model.get_current_visuals(), filename)
+                wandb.log({"example": wandb.Image(filename)})                
 
             if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
                 meta = {"epoch": epoch, "epoch_iter": epoch_iter, "time_compute": optimize_time, "time_load": t_data, **losses}
                 wandb.log(meta)
-                print(meta)
 
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
-                print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
                 for save_path in model.save_networks(save_suffix):
                     wandb.save(save_path)
