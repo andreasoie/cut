@@ -135,3 +135,5 @@ checkpoints/*
 wandb/*
 snapshots
 outputs
+
+new_outputs/step_100/

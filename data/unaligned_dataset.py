@@ -72,7 +72,6 @@ class UnalignedDataset(BaseDataset):
             transformB = get_transform(modified_opt, grayscale=True)
         A = transformA(A_img)
         B = transformB(B_img)
-
         return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path}
 
     def __len__(self):

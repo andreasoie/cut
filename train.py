@@ -37,9 +37,9 @@ if __name__ == '__main__':
     total_iters = 0                # the total number of training iterations
     optimize_time = 0.1
 
-    wandb.init(project="cut", entity="andreasoie")
-    wandb.config.update(opt)
-
+    if opt.wandb:
+        wandb.init(project="cut", entity="andreasoie")
+        wandb.config.update(opt)
     os.makedirs(f"snapshots/{opt.name}", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
     
@@ -82,23 +82,27 @@ if __name__ == '__main__':
                 model.compute_visuals()
                 filename = os.path.join("snapshots", opt.name, f"{total_iters}.png")
                 save_snapshot_image(model.get_current_visuals(), filename)
-                wandb.log({"example": wandb.Image(filename)})                
+                if opt.wandb:
+                    wandb.log({"example": wandb.Image(filename)})                
 
             if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
                 meta = {"epoch": epoch, "epoch_iter": epoch_iter, "time_compute": optimize_time, "time_load": t_data, **losses}
-                wandb.log(meta)
+                if opt.wandb:
+                    wandb.log(meta)
 
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
                 for save_path in model.save_networks(save_suffix):
-                    wandb.save(save_path)
+                    if opt.wandb:
+                        wandb.save(save_path)
 
             iter_data_time = time.time()
 
         if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
             print('Saving models at the end of epoch %d, iters %d' % (epoch, total_iters))
             for save_path in model.save_networks(epoch):
+                if opt.wandb:
                     wandb.save(save_path)
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
