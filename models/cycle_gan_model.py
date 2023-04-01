@@ -182,7 +182,7 @@ class CycleGANModel(BaseModel):
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
         self.loss_G.backward()
 
-    def data_dependent_initialize(self):
+    def data_dependent_initialize(self, data=None):
         return
 
     def generate_visuals_for_evaluation(self, data, mode):
