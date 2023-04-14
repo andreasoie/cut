@@ -134,4 +134,6 @@ tmp
 checkpoints
 wandb
 snapshots
+outputs
 cherries
+new_outputs/step_100/

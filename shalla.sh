@@ -1,0 +1,11 @@
+python train.py \
+--dataroot /home/andy/Dropbox/largefiles1/autoferry_processed/autoferry \
+--name autoferry \
+--model cycle_gan \
+--input_nc 3 \
+--output_nc 1 \
+--batch_size 1 \
+--phase train \
+--preprocess resize \
+--load_size 256 \
+--lambda_identity 0.0

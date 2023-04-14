@@ -88,8 +88,6 @@ def _get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conv
         transform_list.append(transforms.Resize(params["size"], method))
     if 'resize' in opt.preprocess:
         osize = [opt.load_size, opt.load_size]
-        if "gta2cityscapes" in opt.dataroot:
-            osize[0] = opt.load_size // 2
         transform_list.append(transforms.Resize(osize, method))
     elif 'scale_width' in opt.preprocess:
         transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, opt.crop_size, method)))
