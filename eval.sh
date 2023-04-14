@@ -1,20 +1,18 @@
-python train.py \
+python eval.py \
 --dataroot /home/andreoi/data/autoferry \
 --checkpoints_dir checkpoints \
+--results_dir tmp \
 --name autoferry_cycle_gan \
 --model cycle_gan \
 --netG resnet_9blocks \
---input_nc 3 \
---output_nc 1 \
 --gpu_ids 0,1,2 \
 --num_threads 12 \
 --batch_size 24 \
---lr 0.0006 \
---phase train \
---lambda_identity 0.0 \
---display_freq 1000 \
---save_epoch_freq 25 \
---print_freq 100 \
 --preprocess resize \
+--input_nc 3 \
+--output_nc 1 \
+--phase test \
+--no_dropout true \
 --load_size 256 \
---wandb
+--crop_size 255 \
+--num_threads 4

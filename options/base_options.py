@@ -1,9 +1,11 @@
 import argparse
 import os
-from util import util
+
 import torch
-import models
+
 import data
+import models
+from util import util
 
 
 class BaseOptions():
@@ -124,7 +126,9 @@ class BaseOptions():
                 comment = '\t[default: %s]' % str(default)
             message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
         message += '----------------- End -------------------'
-        print(message)
+        
+        if opt.verbose:
+            print(message)
 
         # save to the disk
         expr_dir = os.path.join(opt.checkpoints_dir, opt.name)

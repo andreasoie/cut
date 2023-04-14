@@ -10,7 +10,7 @@ class TrainOptions(BaseOptions):
     def initialize(self, parser):
         parser = BaseOptions.initialize(self, parser)
         # visdom and HTML visualization parameters
-        parser.add_argument('--display_freq', type=int, default=400, help='frequency of showing training results on screen')
+        parser.add_argument('--display_freq', type=int, default=500, help='frequency of showing training results on screen')
         parser.add_argument('--display_ncols', type=int, default=4, help='if positive, display all images in a single visdom web panel with certain number of images per row.')
         parser.add_argument('--display_id', type=int, default=None, help='window id of the web display. Default is random window id')
         parser.add_argument('--display_server', type=str, default="http://localhost", help='visdom server of the web display')
@@ -40,5 +40,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lr_policy', type=str, default='linear', help='learning rate policy. [linear | step | plateau | cosine]')
         parser.add_argument('--lr_decay_iters', type=int, default=50, help='multiply by a gamma every lr_decay_iters iterations')
 
+        # logging
+        parser.add_argument('--wandb', action='store_true', help='whether to use wandb')
         self.isTrain = True
         return parser

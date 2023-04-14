@@ -11,7 +11,9 @@ Now you can use the dataset class by specifying flag '--dataset_mode dummy'.
 See our template dataset class 'template_dataset.py' for more details.
 """
 import importlib
+
 import torch.utils.data
+
 from data.base_dataset import BaseDataset
 
 
@@ -71,7 +73,8 @@ class CustomDatasetDataLoader():
         self.opt = opt
         dataset_class = find_dataset_using_name(opt.dataset_mode)
         self.dataset = dataset_class(opt)
-        print("dataset [%s] was created" % type(self.dataset).__name__)
+        if opt.verbose:
+            print(f"Created dataset: {type(self.dataset).__name__}")
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=opt.batch_size,

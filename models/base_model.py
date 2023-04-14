@@ -34,7 +34,11 @@ class BaseModel(ABC):
         self.opt = opt
         self.gpu_ids = opt.gpu_ids
         self.isTrain = opt.isTrain
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')  # get device name: CPU or GPU
+        # self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')  # get device name: CPU or GPU
+        if torch.cuda.device_count() > 1:
+            self.device = torch.device("cuda:0")
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)  # save all the checkpoints to save_dir
         if opt.preprocess != 'scale_width':  # with [scale_width], input images might have different sizes, which hurts the performance of cudnn.benchmark.
             torch.backends.cudnn.benchmark = True
@@ -98,9 +102,10 @@ class BaseModel(ABC):
             self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
         if not self.isTrain or opt.continue_train:
             load_suffix = opt.epoch
-            self.load_networks(load_suffix)
+            self.load_networks(load_suffix, opt)
 
-        self.print_networks(opt.verbose)
+        if opt.verbose:
+            self.print_networks(opt.verbose)
 
     def parallelize(self):
         for name in self.model_names:
@@ -108,7 +113,7 @@ class BaseModel(ABC):
                 net = getattr(self, 'net' + name)
                 setattr(self, 'net' + name, torch.nn.DataParallel(net, self.opt.gpu_ids))
 
-    def data_dependent_initialize(self, data):
+    def data_dependent_initialize(self, data) -> None:
         pass
 
     def eval(self):
@@ -117,6 +122,13 @@ class BaseModel(ABC):
             if isinstance(name, str):
                 net = getattr(self, 'net' + name)
                 net.eval()
+    
+    def to_train(self):
+        """Make models return to train mode"""
+        for name in self.model_names:
+            if isinstance(name, str):
+                net = getattr(self, 'net' + name)
+                net.train()
 
     def test(self):
         """Forward function used in test time.
@@ -145,7 +157,6 @@ class BaseModel(ABC):
                 scheduler.step()
 
         lr = self.optimizers[0].param_groups[0]['lr']
-        print('learning rate = %.7f' % lr)
 
     def get_current_visuals(self):
         """Return visualization images. train.py will display these images with visdom, and save the images to a HTML"""
@@ -198,7 +209,7 @@ class BaseModel(ABC):
         else:
             self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)
 
-    def load_networks(self, epoch):
+    def load_networks(self, epoch, opt):
         """Load all the networks from the disk.
 
         Parameters:
@@ -216,7 +227,9 @@ class BaseModel(ABC):
                 net = getattr(self, 'net' + name)
                 if isinstance(net, torch.nn.DataParallel):
                     net = net.module
-                print('loading the model from %s' % load_path)
+                
+                if opt.verbose:
+                    print(f"Loading the model from {load_path}")
                 # if you are using PyTorch newer than 0.4 (e.g., built from
                 # GitHub source), you can remove str() on self.device
                 state_dict = torch.load(load_path, map_location=str(self.device))

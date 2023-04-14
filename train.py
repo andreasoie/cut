@@ -1,105 +1,144 @@
 import os
+import random
 import time
 import warnings
+from argparse import Namespace
 from collections import OrderedDict
+from copy import deepcopy
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
+from tqdm import tqdm
 
 import wandb
 from data import create_dataset
+from data.unaligned_dataset import UnalignedDataset
 from models import create_model
+from models.cycle_gan_model import CycleGANModel
 from options.train_options import TrainOptions
-from util.util import tensor2im
+
+torch.backends.cudnn.benchmark = True
+torch.manual_seed(3407)
+np.random.seed(3407)
+random.seed(3407)
 
 warnings.filterwarnings("ignore")
 
+@torch.no_grad()
+def save_cherry_image(opt: Namespace, model: CycleGANModel, filename: str) -> None:
+    args = deepcopy(opt)
+    args.dataroot = "/home/andreoi/data/study_cases"
+    args.direction == "AtoB"
+    args.no_flip = True
+    args.phase = "test"
+    args.isTrain = False
+    dataloader_val = DataLoader(dataset=UnalignedDataset(args), batch_size=1, shuffle=False, num_workers=1, drop_last=False)
+    assert len(dataloader_val) == 6, "Only 6 are expected"
+    model.eval()
+    
+    generated_images = []
+    for inputs in dataloader_val:
+        outputs = model.generate_visuals_for_evaluation(inputs, mode="forward")
+        outputs["fake_B"] = outputs["fake_B"].squeeze(0)
+        generated_images.append(outputs["fake_B"])
+    
+    img_grid = make_grid(generated_images, nrow=len(generated_images), padding=0, pad_value=1)
+    img_grid = img_grid.cpu().numpy().transpose((1, 2, 0))
+    img_grid = (img_grid * 0.5) + 0.5
+    img_grid = np.clip(img_grid, 0, 1)
+    fig, ax = plt.subplots(figsize=(12, 2))
+    ax.imshow(img_grid)
+    ax.axis("off")
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0, hspace=0)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    plt.savefig(filename, dpi=300, transparent=True)
+    plt.close()
+    
+    args.isTrain = True
+    model.to_train()
+
 def save_snapshot_image(visuals: OrderedDict, filename: str) -> None:
-    fig, axs = plt.subplots(nrows=1, ncols=len(visuals), squeeze=False, figsize=(40, 10))
-    for i, (label, image) in enumerate(visuals.items()):
-        image = tensor2im(image)
-        axs[0, i].imshow(image)
-        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
-        axs[0, i].set_title(label, fontsize=25)
-    plt.savefig(filename)
-    plt.tight_layout()
+    randidx = 0 # 1 out of BS
+    generated_images = []
+    real_A = visuals["real_A"][randidx]
+    real_B = visuals["real_B"][randidx]
+    fake_B = visuals["fake_B"][randidx]
+    generated_images = [real_A, fake_B, real_B]
+    generated_images = [img.repeat(3, 1, 1) if img.shape[0] == 1 else img for img in generated_images]
+    generated_images = [img.squeeze(0) for img in generated_images]
+    
+    img_grid = make_grid(generated_images, nrow=len(generated_images), padding=0, pad_value=1)
+    img_grid = img_grid.cpu().numpy().transpose((1, 2, 0))
+    img_grid = (img_grid * 0.5) + 0.5
+    img_grid = np.clip(img_grid, 0, 1)
+    fig, ax = plt.subplots(figsize=(6, 2))
+    ax.imshow(img_grid)
+    ax.axis("off")
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0, hspace=0)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    plt.savefig(filename, dpi=300, transparent=True)
     plt.close()
 
+
 if __name__ == '__main__':
+    opt = TrainOptions().parse()
+    dataset = create_dataset(opt)
+    dataset_size = len(dataset)
+    model = create_model(opt)
+    print(f"Training set: {dataset_size} images")
+    
 
-    opt = TrainOptions().parse()   # get training options
-    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    dataset_size = len(dataset)    # get the number of images in the dataset.
+    if opt.wandb:
+        wandb.init(project="cyc", entity="andreasoie")
+        wandb.config.update(opt)
 
-    model = create_model(opt)      # create a model given opt.model and other options
-    print('The number of training images = %d' % dataset_size)
-
-    total_iters = 0                # the total number of training iterations
-    optimize_time = 0.1
-
-    wandb.init(project="cut", entity="andreasoie")
-    wandb.config.update(opt)
-
-    os.makedirs(f"snapshots/{opt.name}", exist_ok=True)
+    os.makedirs("snapshots", exist_ok=True)
+    os.makedirs("cherries", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
     
-    times = []
-    for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
-        epoch_start_time = time.time()  # timer for entire epoch
-        iter_data_time = time.time()    # timer for data loading per iteration
-        epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
-
+    iterations = 0
+    for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):
         dataset.set_epoch(epoch)
-
-        for i, data in enumerate(dataset):  # inner loop within one epoch
-            iter_start_time = time.time()  # timer for computation per iteration
-            if total_iters % opt.print_freq == 0:
-                t_data = iter_start_time - iter_data_time
-
-            batch_size = data["A"].size(0)
-            total_iters += batch_size
-            epoch_iter += batch_size
+        
+        current_lr = model.optimizers[0].param_groups[0]['lr']
+        desc = f"Epoch {(epoch):3d} / {(opt.n_epochs + opt.n_epochs_decay):3d}, LR = {current_lr:.6f}"
+        for i, data in tqdm(enumerate(dataset), total=(dataset_size // opt.batch_size), desc=desc, colour="cyan"):
+            iterations += data["A"].size(0)
 
             if len(opt.gpu_ids) > 0:
                 torch.cuda.synchronize()
-
-            optimize_start_time = time.time()
 
             if epoch == opt.epoch_count and i == 0:
                 model.data_dependent_initialize(data)
-                model.setup(opt)               # regular setup: load and print networks; create schedulers
-                model.parallelize()
+                model.setup(opt)
 
-            model.set_input(data)  # unpack data from dataset and apply preprocessing
-            model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
+            model.set_input(data)
+            model.optimize_parameters()
+            
             if len(opt.gpu_ids) > 0:
                 torch.cuda.synchronize()
             
-            optimize_time = (time.time() - optimize_start_time) / batch_size * 0.005 + 0.995 * optimize_time
+            if iterations % opt.display_freq == 0:
+                filename1 = os.path.join("snapshots", f"{iterations}.png")
+                filename2 = os.path.join("cherries", f"{iterations}.png")
+                save_snapshot_image(model.get_current_visuals(), filename1)
+                save_cherry_image(opt=opt, model=model, filename=filename2)
+                if opt.wandb:
+                    wandb.log({"snapshot": wandb.Image(filename1)})
+                    wandb.log({"cherry": wandb.Image(filename2)})
 
-            if total_iters % opt.display_freq == 0:   # display images on visdom and save images to a HTML file
-                save_result = total_iters % opt.update_html_freq == 0
-                model.compute_visuals()
-                filename = os.path.join("snapshots", opt.name, f"{total_iters}.png")
-                save_snapshot_image(model.get_current_visuals(), filename)
-                wandb.log({"example": wandb.Image(filename)})                
-
-            if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
+            if iterations % opt.print_freq == 0:
                 losses = model.get_current_losses()
-                meta = {"epoch": epoch, "epoch_iter": epoch_iter, "time_compute": optimize_time, "time_load": t_data, **losses}
-                wandb.log(meta)
+                meta = {"epoch": epoch, "iteration": iterations, **losses}
+                if opt.wandb:
+                    wandb.log(meta)
 
-            if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
-                save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
-                for save_path in model.save_networks(save_suffix):
-                    wandb.save(save_path)
-
-            iter_data_time = time.time()
-
-        if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
-            print('Saving models at the end of epoch %d, iters %d' % (epoch, total_iters))
+        if epoch % opt.save_epoch_freq == 0:
             for save_path in model.save_networks(epoch):
-                    wandb.save(save_path)
-
-        print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
-        model.update_learning_rate()                     # update learning rates at the end of every epoch.
+                pass # takes up too much space on W&B
+        model.update_learning_rate()                    

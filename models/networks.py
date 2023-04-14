@@ -1,11 +1,14 @@
+import functools
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
-import functools
 from torch.optim import lr_scheduler
-import numpy as np
-from .stylegan_networks import StyleGAN2Discriminator, StyleGAN2Generator, TileStyleGAN2Discriminator
+
+from .stylegan_networks import (StyleGAN2Discriminator, StyleGAN2Generator,
+                                TileStyleGAN2Discriminator)
 
 ###############################################################################
 # Helper Functions
@@ -205,11 +208,12 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[], debug=False, i
 
     Return an initialized network.
     """
-    if len(gpu_ids) > 0:
-        assert(torch.cuda.is_available())
-        net.to(gpu_ids[0])
+    # if len(gpu_ids) > 1:
+    # net.to(gpu_ids[0])
         # if not amp:
-        # net = torch.nn.DataParallel(net, gpu_ids)  # multi-GPUs for non-AMP training
+    # elif len(gpu_ids) == 1:
+    #     net.to(gpu_ids[0])
+    net = torch.nn.DataParallel(net)  # multi-GPUs for non-AMP training
     if initialize_weights:
         init_weights(net, init_type, init_gain=init_gain, debug=debug)
     return net

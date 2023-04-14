@@ -3,11 +3,12 @@
 It also includes common transformation functions (e.g., get_transform, __scale_width), which can be later used in subclasses.
 """
 import random
+from abc import ABC, abstractmethod
+
 import numpy as np
 import torch.utils.data as data
-from PIL import Image
 import torchvision.transforms as transforms
-from abc import ABC, abstractmethod
+from PIL import Image
 
 
 class BaseDataset(data.Dataset, ABC):
@@ -79,7 +80,7 @@ def get_params(opt, size):
     return {'crop_pos': (x, y), 'flip': flip}
 
 
-def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
+def _get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
     transform_list = []
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
@@ -129,6 +130,56 @@ def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conve
         else:
             transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     return transforms.Compose(transform_list)
+
+class RandomRotateAndZoom:
+    def __init__(self, degrees, fill=None, fillcolor=None):
+        self.degrees = degrees
+        self.fill = fill
+        self.fillcolor = fillcolor
+
+    def __call__(self, img):
+        angle = random.uniform(-self.degrees, self.degrees)
+        rotated_img = img.rotate(angle, resample=Image.BICUBIC, fillcolor=self.fillcolor)
+
+        # Calculate the zoom factor needed to prevent black bars
+        angle_rad = abs(angle) * (3.14159 / 180)
+        zoom_factor = 1 / (1 - (1 - abs(angle) / 90) * 0.5)
+
+        width, height = img.size
+        new_width, new_height = int(width * zoom_factor), int(height * zoom_factor)
+        rotated_img = rotated_img.resize((new_width, new_height), resample=Image.BICUBIC)
+
+        paste_x, paste_y = (rotated_img.width - rotated_img.width) // 2, (rotated_img.height - rotated_img.height) // 2
+        rotated_img.paste(rotated_img, (paste_x, paste_y))
+
+        return rotated_img
+    
+def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC):
+    tfms = []
+    
+    if grayscale:
+        tfms.append(transforms.Grayscale(1))
+
+    padding = 10
+
+    tfms.append(transforms.Resize([opt.load_size, opt.load_size], method))
+    tfms.append(transforms.Lambda(lambda img: __make_power_2(img, base=4, method=method)))
+    if not grayscale:
+        tfms.append(transforms.Pad(padding, fill=0, padding_mode='reflect'))
+        tfms.append(RandomRotateAndZoom(degrees=10, fillcolor=(0, 0, 0)))
+        tfms.append(transforms.CenterCrop(256))
+    tfms.append(transforms.RandomHorizontalFlip(p=0.5))
+    # tfms.append(transforms.RandomRotation(degrees=10))
+    # tfms.append(transforms.RandomResizedCrop(params["size"], scale=(0.8, 1.2)))
+    # tfms.append(transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1))
+
+    tfms += [transforms.ToTensor()]
+    if grayscale:
+        tfms += [transforms.Normalize((0.5,), (0.5,))]
+    else:
+        tfms += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    return transforms.Compose(tfms)
+
 
 
 def __make_power_2(img, base, method=Image.BICUBIC):
