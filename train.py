@@ -87,11 +87,12 @@ def save_snapshot_image(visuals: OrderedDict, filename: str) -> None:
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()
+    
+    opt.wandb = True
     dataset = create_dataset(opt)
     dataset_size = len(dataset)
     model = create_model(opt)
     print(f"Training set: {dataset_size} images")
-    
 
     if opt.wandb:
         wandb.init(project="cyc", entity="andreasoie")

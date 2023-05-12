@@ -1,1 +1,0 @@
-python train.py --dataroot "/home/andreoi/data/autoferry_small" --name autoferry_cut --model cut --input_nc 3 --output_nc 3 --batch_size 1 --phase train --save_by_iter
