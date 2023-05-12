@@ -4,7 +4,8 @@ import random
 from PIL import Image
 
 import util.util as util
-from data.base_dataset import BaseDataset, get_transform
+from data.base_dataset import (BaseDataset, get_transform,
+                               get_validation_transform)
 from data.image_folder import make_dataset
 
 
@@ -38,7 +39,7 @@ class UnalignedDataset(BaseDataset):
         self.B_paths = sorted(make_dataset(self.dir_B, opt.max_dataset_size))    # load images from '/path/to/data/trainB'
         self.A_size = len(self.A_paths)  # get the size of dataset A
         self.B_size = len(self.B_paths)  # get the size of dataset B
-
+        
     def __getitem__(self, index):
         """Return a data point and its metadata information.
 
@@ -66,10 +67,13 @@ class UnalignedDataset(BaseDataset):
         is_finetuning = self.opt.isTrain and self.current_epoch > self.opt.n_epochs
         modified_opt = util.copyconf(self.opt, load_size=self.opt.crop_size if is_finetuning else self.opt.load_size)
 
-        transformA = get_transform(modified_opt)
-        transformB = get_transform(modified_opt)
-        if self.opt.model == "cycle_gan":
-            transformB = get_transform(modified_opt, grayscale=True)
+        if self.opt.isTrain or self.opt.phase == "train":
+            transformA = get_transform(modified_opt)
+            transformB = get_transform(modified_opt, grayscale=True if self.opt.model == "cycle_gan" else False)
+        else:
+            transformA = get_validation_transform(modified_opt)
+            transformB = get_validation_transform(modified_opt, grayscale=True if self.opt.model == "cycle_gan" else False)
+
         A = transformA(A_img)
         B = transformB(B_img)
         return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path}

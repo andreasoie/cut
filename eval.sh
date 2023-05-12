@@ -1,18 +1,15 @@
 python eval.py \
 --dataroot /home/andreoi/data/autoferry \
 --checkpoints_dir checkpoints \
---results_dir tmp \
---name autoferry_cycle_gan \
---model cycle_gan \
---netG resnet_9blocks \
---gpu_ids 0,1,2 \
---num_threads 12 \
---batch_size 24 \
+--name autoferry_cut \
+--model cut \
+--gpu_ids 0 \
+--num_threads 4 \
+--batch_size 8 \
 --preprocess resize \
 --input_nc 3 \
---output_nc 1 \
+--output_nc 3 \
 --phase test \
---no_dropout true \
 --load_size 256 \
---crop_size 255 \
+--crop_size 256 \
 --num_threads 4

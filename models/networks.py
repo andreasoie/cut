@@ -213,7 +213,8 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[], debug=False, i
         # if not amp:
     # elif len(gpu_ids) == 1:
     #     net.to(gpu_ids[0])
-    net = torch.nn.DataParallel(net)  # multi-GPUs for non-AMP training
+    if len(gpu_ids) > 1:
+        net = torch.nn.DataParallel(net)  # multi-GPUs for non-AMP training
     if initialize_weights:
         init_weights(net, init_type, init_gain=init_gain, debug=debug)
     return net

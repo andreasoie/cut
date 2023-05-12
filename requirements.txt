@@ -9,3 +9,5 @@ wandb
 matplotlib
 opencv-python
 tqdm
+munch
+optuna

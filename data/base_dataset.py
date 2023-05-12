@@ -152,25 +152,33 @@ class RandomRotateAndZoom:
 
         return rotated_img
     
-def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC):
+def get_validation_transform(opt, grayscale=False, method=Image.BICUBIC):
     tfms = []
     
     if grayscale:
         tfms.append(transforms.Grayscale(1))
 
-    padding = 10
+    tfms.append(transforms.Resize([opt.load_size, opt.load_size], method))
+    tfms.append(transforms.Lambda(lambda img: __make_power_2(img, base=4, method=method)))
+    tfms += [transforms.ToTensor()]
+    
+    if grayscale:
+        tfms += [transforms.Normalize((0.5,), (0.5,))]
+    else:
+        tfms += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    return transforms.Compose(tfms)
+    
+def get_transform(opt, grayscale=False, method=Image.BICUBIC):
+    tfms = []
+    
+    if grayscale:
+        tfms.append(transforms.Grayscale(1))
 
     tfms.append(transforms.Resize([opt.load_size, opt.load_size], method))
     tfms.append(transforms.Lambda(lambda img: __make_power_2(img, base=4, method=method)))
-    if not grayscale:
-        tfms.append(transforms.Pad(padding, fill=0, padding_mode='reflect'))
-        tfms.append(RandomRotateAndZoom(degrees=10, fillcolor=(0, 0, 0)))
-        tfms.append(transforms.CenterCrop(256))
     tfms.append(transforms.RandomHorizontalFlip(p=0.5))
-    # tfms.append(transforms.RandomRotation(degrees=10))
-    # tfms.append(transforms.RandomResizedCrop(params["size"], scale=(0.8, 1.2)))
-    # tfms.append(transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1))
-
+    # tfms.append(transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1))
+    # tfms.append(transforms.GaussianBlur(kernel_size=(9, 9), sigma=(0.1, 2.0)))
     tfms += [transforms.ToTensor()]
     if grayscale:
         tfms += [transforms.Normalize((0.5,), (0.5,))]

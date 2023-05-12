@@ -1,18 +1,17 @@
 python generate.py \
 --dataroot /home/andreoi/data/study_cases \
---checkpoints_dir checkpoints \
+--checkpoints_dir '../contra/checkpoints' \
 --results_dir "generations" \
 --name autoferry_cycle_gan \
 --model cycle_gan \
 --netG resnet_9blocks \
---gpu_ids 0,1,2 \
---num_threads 4
+--gpu_ids 0 \
+--num_threads 4 \
 --preprocess resize \
 --input_nc 3 \
 --output_nc 1 \
---gpu_ids 0 \
 --batch_size 1 \
 --phase test \
 --no_dropout true \
 --load_size 256 \
---crop_size 255 \
+--crop_size 255

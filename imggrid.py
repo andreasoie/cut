@@ -21,13 +21,13 @@ ir_images = find_files(DOMAIN_B_IMAGES, "png")
 eo_images = sorted(eo_images)
 ir_images = sorted(ir_images)
 
-netG = "resnet_9blocks"
+figurename = f"baseline_starganv2_latent.png"
 
-figurename = f"cyclegan_{netG}_tfms.png"
+repo = "starganv2"
+imgfolder = "cherries_latent"
 
-imgfolder = "generations"
-
-resume_iters = np.linspace(25, 400, 16, dtype=int).tolist()
+# resume_iters = np.linspace(25, 400, 16, dtype=int).tolist()
+resume_iters = np.linspace(10_000, 140_000, 14).astype(int).tolist()
 
 image_collection = []
 
@@ -37,7 +37,10 @@ for img in eo_images:
 
 # Find, sort, and add the generated images
 for resume_iter in resume_iters:
-    result_path = f"/home/andreoi/dev/cut/{imgfolder}/step_{resume_iter}"
+    result_path = f"/home/andreoi/dev/{repo}/{imgfolder}/step_{resume_iter:06d}"
+    result_path = f"/home/andreoi/dev/{repo}/{imgfolder}/step_{resume_iter:06d}"
+    
+    # /home/andreoi/dev/starganv2/cherries
     assert os.path.exists(result_path), f"Path {result_path} does not exist"
     result_images = find_files(result_path, "png")
     result_images = sorted(result_images)
@@ -71,5 +74,5 @@ plt.savefig(figurename, dpi=300, transparent=True)
 
 time.sleep(5)
 # Remove imgfolder
-if os.path.exists(imgfolder):
-    os.system(f"rm -rf {imgfolder}")
+# if os.path.exists(imgfolder):
+#     os.system(f"rm -rf {imgfolder}")
